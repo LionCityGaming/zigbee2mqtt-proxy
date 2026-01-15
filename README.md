@@ -13,7 +13,20 @@ A lightweight HTTP API proxy for Zigbee2MQTT that exposes device statistics in a
 ## Environment Variables
 
 - `ZIGBEE2MQTT_URL` - Base URL for Zigbee2MQTT web interface (default: `http://zigbee2mqtt:8080`)
+- `ZIGBEE2MQTT_API_KEY` or `API_KEY` - API key for Zigbee2MQTT authentication (required if API security is enabled)
 - `CACHE_TIMEOUT` - Cache duration in seconds (default: `300` / 5 minutes)
+
+## Finding Your Zigbee2MQTT API Key
+
+The API key is set in your Zigbee2MQTT `configuration.yaml`:
+
+```yaml
+advanced:
+  network_key: GENERATE
+  api_key: your_api_key_here  # This is the key you need
+```
+
+If not set, you can generate one or check your Zigbee2MQTT logs for the auto-generated key.
 
 ## Endpoints
 
@@ -53,6 +66,7 @@ docker run -d \
   --name zigbee2mqtt-proxy \
   -p 5153:5000 \
   -e ZIGBEE2MQTT_URL=http://zigbee2mqtt:8080 \
+  -e ZIGBEE2MQTT_API_KEY=your_api_key_here \
   -e CACHE_TIMEOUT=300 \
   ghcr.io/lioncitygaming/zigbee2mqtt-proxy:latest
 ```
@@ -68,6 +82,7 @@ services:
       - "5153:5000"
     environment:
       - ZIGBEE2MQTT_URL=http://zigbee2mqtt:8080
+      - ZIGBEE2MQTT_API_KEY=your_api_key_here
       - CACHE_TIMEOUT=300
     restart: unless-stopped
 ```

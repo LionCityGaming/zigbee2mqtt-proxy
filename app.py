@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Zigbee2MQTT configuration from environment variables
 ZIGBEE2MQTT_URL = os.environ.get('ZIGBEE2MQTT_URL', 'http://zigbee2mqtt:8080')
+ZIGBEE2MQTT_API_KEY = os.environ.get('ZIGBEE2MQTT_API_KEY', os.environ.get('API_KEY'))
 CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', 300))  # 5 minutes default
 
 # Stats cache
@@ -32,10 +33,16 @@ def get_zigbee2mqtt_stats():
         logger.info("Returning cached stats")
         return _stats_cache['stats']
 
+    # Prepare headers with API key if provided
+    headers = {}
+    if ZIGBEE2MQTT_API_KEY:
+        headers['X-Api-Key'] = ZIGBEE2MQTT_API_KEY
+
     try:
         # Get bridge info
         info_response = requests.get(
             f'{ZIGBEE2MQTT_URL}/api/info',
+            headers=headers,
             timeout=10
         )
         info_response.raise_for_status()
@@ -44,6 +51,7 @@ def get_zigbee2mqtt_stats():
         # Get all devices
         devices_response = requests.get(
             f'{ZIGBEE2MQTT_URL}/api/devices',
+            headers=headers,
             timeout=10
         )
         devices_response.raise_for_status()
