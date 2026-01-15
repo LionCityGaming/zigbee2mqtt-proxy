@@ -1,49 +1,52 @@
 # Zigbee2MQTT Proxy
 
-A lightweight HTTP API proxy for Zigbee2MQTT that exposes device statistics in a format compatible with Homepage dashboard widgets.
+A lightweight HTTP API proxy for Zigbee2MQTT that connects to the MQTT broker and exposes device statistics in a format compatible with Homepage dashboard widgets.
 
 ## Features
 
 - Health check endpoint
 - Statistics endpoint returning device counts and network health
-- Configurable cache timeout (default: 5 minutes)
+- MQTT-based real-time data collection
 - Lightweight Flask-based API
 - Docker container ready
 
 ## Environment Variables
 
-- `ZIGBEE2MQTT_URL` - Base URL for Zigbee2MQTT web interface (default: `http://zigbee2mqtt:8080`)
-- `ZIGBEE2MQTT_API_KEY` or `API_KEY` - API key for Zigbee2MQTT authentication (required if API security is enabled)
+- `MQTT_SERVER` - MQTT broker server address (default: `192.168.1.88`)
+- `MQTT_PORT` - MQTT broker port (default: `1883`)
+- `MQTT_USER` - MQTT username (default: `mqtt`)
+- `MQTT_PASSWORD` - MQTT password (default: `mqtt`)
+- `MQTT_BASE_TOPIC` - Zigbee2MQTT base topic (default: `zigbee2mqtt`)
 - `CACHE_TIMEOUT` - Cache duration in seconds (default: `300` / 5 minutes)
 
-## Finding Your Zigbee2MQTT API Key
+## Finding Your MQTT Configuration
 
-The API key is set in your Zigbee2MQTT `configuration.yaml`:
+The MQTT settings are in your Zigbee2MQTT `configuration.yaml`:
 
 ```yaml
-advanced:
-  network_key: GENERATE
-  api_key: your_api_key_here  # This is the key you need
+mqtt:
+  base_topic: zigbee2mqtt
+  server: mqtt://192.168.1.88:1883
+  user: mqtt
+  password: mqtt
 ```
-
-If not set, you can generate one or check your Zigbee2MQTT logs for the auto-generated key.
 
 ## Endpoints
 
 ### GET /health
-Returns `OK` with status 200 if the service is running.
+Returns `OK` with status 200 if the service is running and connected to MQTT.
 
 ### GET /stats
 Returns Zigbee2MQTT statistics in JSON format:
 
 ```json
 {
-    "total_devices": 45,
-    "online_devices": 43,
+    "total_devices": 18,
+    "online_devices": 16,
     "offline_devices": 2,
-    "battery_low": 2,
-    "router_devices": 15,
-    "end_devices": 30,
+    "battery_low": 0,
+    "router_devices": 2,
+    "end_devices": 16,
     "coordinator_version": "1.35.0",
     "permit_join": false
 }
@@ -51,9 +54,9 @@ Returns Zigbee2MQTT statistics in JSON format:
 
 Where:
 - `total_devices`: Total number of Zigbee devices (excluding coordinator)
-- `online_devices`: Number of devices that have reported recently
+- `online_devices`: Number of devices that are currently available
 - `offline_devices`: Number of devices not responding
-- `battery_low`: Number of battery-powered devices with < 20% battery
+- `battery_low`: Number of battery-powered devices with low battery (placeholder - requires device state data)
 - `router_devices`: Number of router/repeater devices
 - `end_devices`: Number of end devices (sensors, switches, etc.)
 - `coordinator_version`: Zigbee2MQTT version
@@ -64,10 +67,12 @@ Where:
 ```bash
 docker run -d \
   --name zigbee2mqtt-proxy \
-  -p 5153:5000 \
-  -e ZIGBEE2MQTT_URL=http://zigbee2mqtt:8080 \
-  -e ZIGBEE2MQTT_API_KEY=your_api_key_here \
-  -e CACHE_TIMEOUT=300 \
+  -p 6337:5000 \
+  -e MQTT_SERVER=192.168.1.88 \
+  -e MQTT_PORT=1883 \
+  -e MQTT_USER=mqtt \
+  -e MQTT_PASSWORD=mqtt \
+  -e MQTT_BASE_TOPIC=zigbee2mqtt \
   ghcr.io/lioncitygaming/zigbee2mqtt-proxy:latest
 ```
 
@@ -79,11 +84,13 @@ services:
     image: ghcr.io/lioncitygaming/zigbee2mqtt-proxy:latest
     container_name: zigbee2mqtt-proxy
     ports:
-      - "5153:5000"
+      - "6337:5000"
     environment:
-      - ZIGBEE2MQTT_URL=http://zigbee2mqtt:8080
-      - ZIGBEE2MQTT_API_KEY=your_api_key_here
-      - CACHE_TIMEOUT=300
+      - MQTT_SERVER=192.168.1.88
+      - MQTT_PORT=1883
+      - MQTT_USER=mqtt
+      - MQTT_PASSWORD=mqtt
+      - MQTT_BASE_TOPIC=zigbee2mqtt
     restart: unless-stopped
 ```
 
@@ -94,11 +101,11 @@ Add this to your Homepage `services.yaml`:
 ```yaml
 - Zigbee2MQTT:
     icon: zigbee2mqtt.png
-    href: http://your-server:8080
+    href: http://192.168.1.88:6336
     description: Zigbee Network
     widget:
         type: customapi
-        url: http://your-server:5153/stats
+        url: http://192.168.1.88:6337/stats
         refreshInterval: 300000  # 5 minutes
         mappings:
             - field: total_devices
@@ -107,8 +114,8 @@ Add this to your Homepage `services.yaml`:
             - field: online_devices
               label: Online
               format: number
-            - field: battery_low
-              label: Low Battery
+            - field: router_devices
+              label: Routers
               format: number
 ```
 
@@ -119,15 +126,18 @@ Add this to your Homepage `services.yaml`:
 pip install -r requirements.txt
 
 # Run locally
-export ZIGBEE2MQTT_URL=http://localhost:8080
+export MQTT_SERVER=192.168.1.88
+export MQTT_USER=mqtt
+export MQTT_PASSWORD=mqtt
 python app.py
 ```
 
 ## Notes
 
-- Requires Zigbee2MQTT with the web interface enabled (frontend enabled in configuration)
+- Requires access to the same MQTT broker that Zigbee2MQTT uses
 - The API is read-only and does not modify any Zigbee2MQTT settings
-- Statistics are cached for the configured timeout period
+- Connects to MQTT on startup and maintains a persistent connection
+- Battery level detection requires additional device state monitoring (future enhancement)
 
 ## License
 
